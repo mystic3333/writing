@@ -41,6 +41,8 @@ allowed-tools:
 
 **路径约定**：本文档中 `{skill_dir}` 指本 SKILL.md 所在的目录（即 WeWrite 的根目录）。
 
+**读取/检查约定**：本文档中 `读取: <路径>` / `检查: <路径>` = **用你环境的文件读取工具真实打开该文件、读完其全部内容，然后再继续本步**。这不是描述性注释——未读取前不得执行依赖该文件的步骤；不同 harness 的文件读取工具名不同，按你环境的对应工具执行。
+
 **Python 解释器约定**：本文档所有 `python3` 命令优先解析为 `{skill_dir}/.venv/bin/python3`（若该文件存在），否则回退系统 `python3`。venv 由 `install.sh` 创建，用于隔离依赖并绕过 macOS Homebrew Python 的 PEP 668 限制。
 
 **Onboard 例外**：Onboard 是交互式的（需要问用户问题），不受"全自动"约束。Onboard 完成后回到全自动管道。
@@ -191,6 +193,8 @@ python3 {skill_dir}/scripts/seo_keywords.py --json {关键词}
 读取: {skill_dir}/history.yaml（最近 3 篇的 dimensions + closing_type 字段）
 读取: {skill_dir}/references/exemplars/index.yaml（如果存在）
 ```
+
+（writing-guide.md 是反 AI 写作底线规则，**未读取前不得开始写作**；它在 Step 4-5 期间保持驻留，Step 5.2 校验仍按其编号规则 1.1-3.2 检查，中途不要丢弃重读。）
 
 **4.1 维度随机化**：
 
