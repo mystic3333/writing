@@ -281,9 +281,9 @@ Category 映射规则：
 
 保存到 `{skill_dir}/output/{date}-{slug}.md`
 
-**4.5 快速自检**（写完后立即执行，减少 Step 5 重写概率）：
+**4.5 快速自检 + 脚本验证**（写完后立即执行，减少 Step 5 重写概率）：
 
-对初稿做 5 项快速扫描，**当场修复**，不留到 Step 5：
+先用 LLM 对初稿做 5 项快速扫描，**当场修复**，不留到 Step 5：
 
 **写作层面**：
 1. **禁用词扫描**：检查 writing-guide.md 2.1 的禁用词列表，命中的直接替换
@@ -295,6 +295,18 @@ Category 映射规则：
 5. **金句检查**：全文是否有至少 1 句可独立截图转发的句子？如果没有，在情绪高点处补一句
 
 LLM 自行完成，不需要调用脚本。
+
+**脚本辅助验证**（LLM 自检的补充，捕获同一模型的盲区）：
+
+```bash
+python3 {skill_dir}/scripts/inline_check.py {article_path} --json
+```
+
+解读 JSON：
+- `overall_pass = true` → LLM 自检 + 脚本均通过，继续 Step 5
+- `overall_pass = false` → 读取 `findings` 和 `fix_suggestions`，逐项定向修复（每项只改最相关的 1-2 处），改完重新运行 inline_check.py 验证。最多 2 轮，仍不过则标记 DONE_WITH_CONCERNS 继续
+
+聚焦 fix_suggestions 中引用具体窗口/段落的条目，不要无差别重写全文。
 
 ---
 
