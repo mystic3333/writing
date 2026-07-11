@@ -14,9 +14,9 @@ Environment variable mapping:
     WEWRITE_THEME          → theme
 """
 
+from __future__ import annotations
 import os
 from pathlib import Path
-from typing import Optional
 
 import yaml
 
@@ -39,8 +39,8 @@ _ENV_OVERRIDES = {
     ("theme",): "WEWRITE_THEME",
 }
 
-_cached_config: Optional[dict] = None
-_cached_path: Optional[Path] = None
+_cached_config: dict | None = None
+_cached_path: Path | None = None
 
 
 def load_config(force_reload: bool = False) -> dict:
@@ -72,7 +72,7 @@ def load_config(force_reload: bool = False) -> dict:
     return config
 
 
-def get_config_path() -> Optional[Path]:
+def get_config_path() -> Path | None:
     """Return the path of the loaded config file (for diagnostics)."""
     if _cached_path is None:
         load_config()

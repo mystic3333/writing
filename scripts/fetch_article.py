@@ -67,7 +67,8 @@ def _fetch_camoufox(url: str) -> str | None:
                 pass  # best effort — page may still have content
             html = page.content()
             return html
-    except Exception:
+    except Exception as e:
+        print(f"[warn] Camoufox fetch failed: {type(e).__name__}: {e}", file=sys.stderr)
         return None
 
 
@@ -88,7 +89,8 @@ def _fetch_playwright(url: str, timeout: int = 30000) -> str | None:
             html = page.content()
             browser.close()
             return html
-    except Exception:
+    except Exception as e:
+        print(f"[warn] Playwright fetch failed: {type(e).__name__}: {e}", file=sys.stderr)
         return None
 
 

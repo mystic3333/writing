@@ -29,93 +29,27 @@ import re
 import sys
 from pathlib import Path
 
-
-# ============================================================
-# Constants
-# ============================================================
-
-BANNED_WORDS = [
-    "首先", "其次", "再者", "最后", "总之", "综上所述", "总而言之",
-    "此外", "另外", "与此同时", "不仅如此", "更重要的是", "在此基础上",
-    "作为一个", "让我们", "值得注意的是", "需要指出的是", "不可否认",
-    "毋庸置疑", "众所周知", "事实上", "显而易见", "可以说", "从某种意义上说",
-    "非常重要", "至关重要", "不言而喻", "具有重要意义", "发挥着重要作用",
-    "意义深远", "影响深远", "引发了广泛关注", "引起了热烈讨论",
-    "总的来说", "综合来看", "由此可见", "不难发现", "通过以上分析",
-    "正如我们所看到的",
-]
-
-REAL_SOURCE_PATTERNS = [
-    r'[A-Z][a-z]+\s+[A-Z][a-z]+',
-    r'[\u4e00-\u9fff]{2,4}(?:表示|指出|认为|写道|提到|说过)',
-    r'(?:据|根据|来自)\s*[\u4e00-\u9fff]+(?:报告|数据|研究|调查)',
-    r'20[12]\d\s*年',
-    r'\d+(?:\.\d+)?%',
-    r'(?:亿|万)\s*(?:美元|元|人民币)',
-]
-
-NEGATIVE_MARKERS = [
-    # 直接负面情绪
-    "失望", "糟糕", "扯", "坑", "烂", "差劲", "崩溃", "吐槽", "骂",
-    "怒", "烦", "焦虑", "担忧", "不满", "恶心", "可怕", "可悲", "可笑",
-    "离谱", "尴尬", "无语", "蠢", "惨", "亏", "危",
-    # 绝望/迷茫
-    "绝望", "迷茫", "心累", "丧", "后悔", "后怕", "心寒",
-    # 欺骗/操控（隐性负面）
-    "骗", "忽悠", "割韭菜", "套路", "画大饼", "洗脑",
-    # 失败/徒劳
-    "白费", "白搭", "没戏", "黄了", "凉了", "废了",
-    # 自嘲/自贬
-    "傻", "天真", "吃亏", "自嗨", "打脸",
-    # 讽刺/反语
-    "呵呵", "好吧", "行吧", "真服了",
-    # 短语
-    "太扯了", "说实话我很失望", "搞什么", "不靠谱", "受不了",
-    "受够了", "想哭", "伤心", "苦哈哈", "得过且过",
-]
-
-COMMON_ADVERBS = [
-    "非常", "十分", "极其", "特别", "相当", "尤其", "格外",
-    "更加", "越来越", "逐渐", "不断", "始终", "一直",
-    "已经", "正在", "将要", "可能", "大概", "或许",
-    "似乎", "显然", "明显", "确实", "果然", "居然",
-    "竟然", "简直", "几乎", "完全", "绝对", "必然",
-]
-
-COLD_WORDS = [
-    "边际", "认知负荷", "信息不对称", "路径依赖", "商业模式", "生态系统", "增量",
-    "技术栈", "标准化", "结构性", "规模化", "护城河", "飞轮", "闭环",
-    "赛道", "壁垒", "方法论", "底层逻辑", "第一性原理", "杠杆", "复利",
-    "ROI", "PMF", "代运营", "供给侧", "需求侧",
-]
-WARM_WORDS = [
-    "说白了", "其实吧", "讲真", "说实话", "坦白讲", "懂的都懂", "怎么说呢",
-    "老实说", "这么说吧", "你想啊", "别急", "慢慢来",
-    "有意思的是", "好玩的是", "巧的是", "说来话长", "话说回来",
-]
-HOT_WORDS = [
-    "DNA动了", "格局打开", "遥遥领先", "卷", "内卷", "炸了", "杀疯了", "吃灰",
-    "凡尔赛", "标题党", "躺平", "摆烂", "破防", "上头", "内耗",
-    "蒸发", "出圈", "降维打击", "弯道超车",
-]
-WILD_WORDS = [
-    "整挺好", "不靠谱", "瞎折腾", "搁这儿", "糊弄", "扯", "嗯",
-    "苦哈哈", "傻乎乎", "稀里糊涂", "得了吧", "算了吧",
-    "摔了跤", "交学费", "踩坑", "翻车", "栽了",
-]
-
-SELF_CORRECTION_PATTERNS = [
-    r'不对[，,]', r'准确说', r'算了', r'说错了',
-    r'其实不是', r'我记混了', r'应该说', r'更准确地说',
-    r'（[^）]{4,}）',  # Chinese parenthetical insertion (≥4 chars)
-]
-
-BROKEN_SENTENCE_PATTERNS = [
-    r'——(?!.*[，。！？])',
-    r'\.{3,}|…',
-    r'不对[，,]',
-    r'算了',
-]
+# Import shared word lists and patterns (single source of truth)
+from word_lists import (
+    BANNED_WORDS,
+    NEGATIVE_MARKERS,
+    COMMON_ADVERBS,
+    COLD_WORDS,
+    WARM_WORDS,
+    HOT_WORDS,
+    WILD_WORDS,
+    REAL_SOURCE_PATTERNS,
+    SELF_CORRECTION_PATTERNS,
+    BROKEN_SENTENCE_PATTERNS_SCORE as BROKEN_SENTENCE_PATTERNS,
+    # Pre-compiled helper functions for performance
+    find_banned_words,
+    find_negative_markers,
+    count_adverbs as _count_adverbs,
+    count_temperature_words,
+    find_real_sources as _find_real_sources,
+    count_broken_sentences as _count_broken,
+    count_self_corrections as _count_self_corrections,
+)
 
 
 # ============================================================
@@ -199,13 +133,9 @@ def score_vocabulary_richness(text):
     bigrams = [cjk_chars[i] + cjk_chars[i + 1] for i in range(len(cjk_chars) - 1)]
     ttr = len(set(bigrams)) / len(bigrams) if bigrams else 0
     ttr_score = min(1.0, ttr / 0.7)
-    # Temperature mix bonus
-    found_temps = sum([
-        any(w in text for w in COLD_WORDS),
-        any(w in text for w in WARM_WORDS),
-        any(w in text for w in HOT_WORDS),
-        any(w in text for w in WILD_WORDS),
-    ])
+    # Temperature mix bonus — use pre-compiled helper
+    temp_counts = count_temperature_words(text)
+    found_temps = sum(1 for v in temp_counts.values() if v > 0)
     temp_bonus = found_temps / 4.0 * 0.3
     score = min(1.0, ttr_score * 0.7 + temp_bonus)
     return _make_result(score, f"bigram_ttr={ttr:.3f}, temps={found_temps}/4", "word_temperature_bias")
@@ -216,8 +146,8 @@ def score_negative_emotion_ratio(text):
     sentences = _split_sentences(text)
     if not sentences:
         return _make_result(0.5, "no sentences", "emotional_arc")
-    negative_count = sum(1 for s in sentences
-                         if any(m in s for m in NEGATIVE_MARKERS))
+    # Use pre-compiled pattern for efficiency
+    negative_count = sum(1 for s in sentences if find_negative_markers(s))
     ratio = negative_count / len(sentences)
     score = min(1.0, ratio / 0.25)
     return _make_result(score, f"negative={negative_count}/{len(sentences)} ({ratio:.0%}, target ≥20%)", "emotional_arc")
@@ -228,8 +158,8 @@ def score_adverb_density(text):
     char_count = len(text)
     if char_count < 50:
         return _make_result(0.5, "text too short", "adverb_max_per_100")
-    # Count adverb occurrences
-    total_adverbs = sum(text.count(adv) for adv in COMMON_ADVERBS)
+    # Use pre-compiled helper for counting
+    total_adverbs = _count_adverbs(text)
     density = total_adverbs / char_count * 100
     # Check consecutive sentences starting with adverbs
     sentences = _split_sentences(text)
@@ -252,7 +182,7 @@ def score_adverb_density(text):
 
 def score_banned_words(text):
     """[2.1] Banned word check. → null (hard rule, no config param)"""
-    found = [w for w in BANNED_WORDS if w in text]
+    found = find_banned_words(text)
     score = max(0.0, 1.0 - len(found) * 0.2)
     detail = "0 banned words" if not found else f"{len(found)} found: {found[:5]}"
     return _make_result(score, detail, None)
@@ -260,14 +190,13 @@ def score_banned_words(text):
 
 def score_broken_sentences(text):
     """[2.2] Broken/incomplete sentence patterns. → broken_sentence_rate"""
-    count = 0
+    # Use pre-compiled helper
+    count = _count_broken(text, mode="score")
     lines = text.split('\n')
     for line in lines:
         line = line.strip()
         if not line:
             continue
-        for p in BROKEN_SENTENCE_PATTERNS:
-            count += len(re.findall(p, line))
         if 1 <= len(line) <= 10 and not line.startswith('#'):
             count += 1
     char_count = len(text)
@@ -278,30 +207,22 @@ def score_broken_sentences(text):
 
 def score_real_sources(text):
     """[3.1] Real external source indicators. → real_data_density"""
-    count = 0
-    for pattern in REAL_SOURCE_PATTERNS:
-        count += len(re.findall(pattern, text))
+    count = len(_find_real_sources(text))
     score = min(1.0, count / 5.0)
     return _make_result(score, f"{count} real-source indicators (target ≥5)", "real_data_density")
 
 
 def score_word_temperature_mix(text):
     """[1.2] Word temperature band coverage. → word_temperature_bias"""
-    found_temps = sum([
-        any(w in text for w in COLD_WORDS),
-        any(w in text for w in WARM_WORDS),
-        any(w in text for w in HOT_WORDS),
-        any(w in text for w in WILD_WORDS),
-    ])
+    temp_counts = count_temperature_words(text)
+    found_temps = sum(1 for v in temp_counts.values() if v > 0)
     score = max(0.0, (found_temps - 1) / 3.0)
     return _make_result(score, f"{found_temps}/4 temperature bands", "word_temperature_bias")
 
 
 def score_self_correction(text):
     """[2.2] Self-correction and parenthetical patterns. → self_correction_rate"""
-    count = 0
-    for pattern in SELF_CORRECTION_PATTERNS:
-        count += len(re.findall(pattern, text))
+    count = _count_self_corrections(text)
     score = min(1.0, count / 3.0)
     return _make_result(score, f"{count} self-corrections/insertions (target ≥3)", "self_correction_rate")
 

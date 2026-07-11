@@ -410,7 +410,13 @@ def main():
         elif args.command == "learn-theme":
             cmd_learn_theme(args)
     except Exception as e:
-        print(f"Error: {e}", file=sys.stderr)
+        import os
+        if os.environ.get("WEWRITE_DEBUG"):
+            import traceback
+            traceback.print_exc()
+        else:
+            print(f"Error: {type(e).__name__}: {e}", file=sys.stderr)
+            print("  (set WEWRITE_DEBUG=1 for full traceback)", file=sys.stderr)
         sys.exit(1)
 
 

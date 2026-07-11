@@ -24,11 +24,7 @@ from pathlib import Path
 import requests
 import yaml
 
-SKILL_DIR = Path(__file__).parent.parent
-
-# Import unified config loader
-sys.path.insert(0, str(SKILL_DIR / "toolkit"))
-from config import load_config, get_wechat_credentials
+from script_utils import SKILL_DIR, save_yaml, load_yaml, get_wechat_credentials
 
 API_TIMEOUT = 30
 
@@ -39,6 +35,10 @@ def _get_access_token(appid: str, secret: str) -> str:
         params={"grant_type": "client_credential", "appid": appid, "secret": secret},
         timeout=API_TIMEOUT,
     )
+    if resp.status_code != 200:
+        raise ValueError(
+            f"WeChat token API returned HTTP {resp.status_code}: {resp.text[:200]}"
+        )
     data = resp.json()
     if "access_token" not in data:
         raise ValueError(f"Token error: {data}")
@@ -57,6 +57,9 @@ def fetch_article_summary(token: str, date: str) -> list[dict]:
         json={"begin_date": date, "end_date": date},
         timeout=API_TIMEOUT,
     )
+    if resp.status_code != 200:
+        print(f"[warn] getarticlesummary HTTP {resp.status_code}: {resp.text[:200]}", file=sys.stderr)
+        return []
     data = resp.json()
     if "list" not in data:
         errcode = data.get("errcode", "unknown")
@@ -79,6 +82,9 @@ def fetch_article_total(token: str, date: str) -> list[dict]:
         json={"begin_date": date, "end_date": date},
         timeout=API_TIMEOUT,
     )
+    if resp.status_code != 200:
+        print(f"[warn] getarticletotal HTTP {resp.status_code}: {resp.text[:200]}", file=sys.stderr)
+        return []
     data = resp.json()
     if "list" not in data:
         return []
@@ -86,20 +92,8 @@ def fetch_article_total(token: str, date: str) -> list[dict]:
 
 
 def _atomic_write_yaml(path: Path, data: dict):
-    """Write YAML atomically: write to temp file then rename to prevent corruption."""
-    tmp_fd, tmp_path = tempfile.mkstemp(
-        dir=path.parent, suffix=".tmp", prefix=path.stem
-    )
-    try:
-        with os.fdopen(tmp_fd, "w", encoding="utf-8") as f:
-            yaml.dump(data, f, allow_unicode=True, default_flow_style=False)
-        os.replace(tmp_path, str(path))
-    except Exception:
-        try:
-            os.unlink(tmp_path)
-        except OSError:
-            pass
-        raise
+    """Write YAML atomically (delegates to script_utils.save_yaml)."""
+    save_yaml(path, data)
 
 
 def update_history(stats_list: list[dict]):
@@ -114,8 +108,7 @@ def update_history(stats_list: list[dict]):
         print("No history.yaml found.")
         return
 
-    with open(history_path, "r", encoding="utf-8") as f:
-        history = yaml.safe_load(f) or {}
+    history = load_yaml(history_path) or {}
 
     articles = history.get("articles", [])
     if not articles:

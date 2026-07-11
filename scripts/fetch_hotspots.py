@@ -6,6 +6,7 @@ Sources (all attempted in parallel, results merged and deduplicated):
   1. Weibo hot search (weibo.com/ajax/side/hotSearch)
   2. Toutiao hot board (toutiao.com/hot-event/hot-board)
   3. Baidu hot search (top.baidu.com/api/board)
+  4. AI HOT (aihot.virxact.com/api/public/hot-topics)
 
 Usage:
     python3 fetch_hotspots.py --limit 20
@@ -73,8 +74,8 @@ def fetch_weibo() -> list[dict]:
                 "description": entry.get("label_name", ""),
             })
         return items
-    except Exception as e:
-        print(f"[warn] weibo failed: {e}", file=sys.stderr)
+    except (requests.RequestException, ValueError, KeyError, TypeError) as e:
+        print(f"[warn] weibo failed: {type(e).__name__}: {e}", file=sys.stderr)
         return []
 
 
@@ -99,8 +100,8 @@ def fetch_toutiao() -> list[dict]:
                 "description": "",
             })
         return items
-    except Exception as e:
-        print(f"[warn] toutiao failed: {e}", file=sys.stderr)
+    except (requests.RequestException, ValueError, KeyError, TypeError) as e:
+        print(f"[warn] toutiao failed: {type(e).__name__}: {e}", file=sys.stderr)
         return []
 
 
@@ -131,8 +132,34 @@ def fetch_baidu() -> list[dict]:
                     "description": "",
                 })
         return items
-    except Exception as e:
-        print(f"[warn] baidu failed: {e}", file=sys.stderr)
+    except (requests.RequestException, ValueError, KeyError, TypeError) as e:
+        print(f"[warn] baidu failed: {type(e).__name__}: {e}", file=sys.stderr)
+        return []
+
+
+def fetch_aihot() -> list[dict]:
+    """Fetch AI HOT trending topics (AI-focused Chinese news)."""
+    try:
+        resp = _request_with_retry(
+            "https://aihot.virxact.com/api/public/hot-topics",
+            source="aihot",
+        )
+        data = resp.json()
+        items = []
+        for entry in data.get("items", []):
+            title = entry.get("title", "")
+            if not title:
+                continue
+            items.append({
+                "title": title,
+                "source": "AI HOT",
+                "hot": int(entry.get("sourceCount", 0) or 0),
+                "url": entry.get("permalink", entry.get("url", "")),
+                "description": "",
+            })
+        return items
+    except (requests.RequestException, ValueError, KeyError, TypeError) as e:
+        print(f"[warn] aihot failed: {type(e).__name__}: {e}", file=sys.stderr)
         return []
 
 
@@ -159,8 +186,8 @@ def main():
     sources_ok = []
     sources_fail = []
 
-    fetchers = {"weibo": fetch_weibo, "toutiao": fetch_toutiao, "baidu": fetch_baidu}
-    with ThreadPoolExecutor(max_workers=3) as pool:
+    fetchers = {"weibo": fetch_weibo, "toutiao": fetch_toutiao, "baidu": fetch_baidu, "aihot": fetch_aihot}
+    with ThreadPoolExecutor(max_workers=4) as pool:
         futures = {pool.submit(fn): name for name, fn in fetchers.items()}
         for future in as_completed(futures):
             name = futures[future]

@@ -31,7 +31,7 @@ from pathlib import Path
 
 import yaml
 
-SKILL_DIR = Path(__file__).parent.parent
+from script_utils import SKILL_DIR, extract_title, load_yaml, get_wechat_credentials
 
 # Pattern types with descriptions
 PATTERN_TYPES = {
@@ -75,27 +75,15 @@ def fetch_wechat_draft() -> tuple[str, str, str]:
     Fetch the latest draft from WeChat and find the corresponding local file.
     Returns (draft_plaintext, final_plaintext, draft_path).
     """
-    # Load config
-    config_path = SKILL_DIR / "config.yaml"
-    if not config_path.exists():
-        raise FileNotFoundError("config.yaml not found — need WeChat API credentials")
-
-    with open(config_path) as f:
-        config = yaml.safe_load(f)
-
-    wechat = config.get("wechat", {})
-    appid = wechat.get("appid", "")
-    secret = wechat.get("secret", "")
-    if not appid or not secret:
-        raise ValueError("config.yaml missing wechat.appid or wechat.secret")
+    # Load config via unified loader
+    appid, secret = get_wechat_credentials()
 
     # Load history to find latest article with media_id
     history_path = SKILL_DIR / "history.yaml"
     if not history_path.exists():
         raise FileNotFoundError("history.yaml not found — no articles to compare")
 
-    with open(history_path) as f:
-        history = yaml.safe_load(f) or []
+    history = load_yaml(history_path) or []
 
     # Find most recent article with media_id
     latest = None
@@ -179,13 +167,6 @@ def split_sections(text: str) -> list[dict]:
             current["lines"].append(line)
     sections.append(current)
     return sections
-
-
-def extract_title(text: str) -> str:
-    for line in text.split("\n"):
-        if line.strip().startswith("# ") and not line.strip().startswith("## "):
-            return line.strip()[2:].strip()
-    return ""
 
 
 def compute_diff(draft: str, final: str) -> dict:
@@ -470,8 +451,8 @@ def main():
             print(f"  Score: {exemplar['humanness_score']:.1f}/100, Category: {exemplar['category']}")
         else:
             print(f"\n⚠ 终稿 humanness_score={exemplar['humanness_score']:.1f} > 50，未加入范文库")
-    except Exception as e:
-        print(f"\n⚠ 范文提取跳过: {e}")
+    except (ImportError, ValueError, KeyError, OSError, RuntimeError) as e:
+        print(f"\n⚠ 范文提取跳过: {type(e).__name__}: {e}")
 
     lesson_count = len(load_all_lessons())
     print(f"Total lessons: {lesson_count}")

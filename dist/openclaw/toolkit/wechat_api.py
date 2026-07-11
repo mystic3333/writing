@@ -43,6 +43,10 @@ def get_access_token(appid: str, secret: str, force_refresh: bool = False) -> st
         },
         timeout=API_TIMEOUT,
     )
+    if resp.status_code != 200:
+        raise ValueError(
+            f"WeChat token API returned HTTP {resp.status_code}: {resp.text[:200]}"
+        )
     data = resp.json()
 
     if "access_token" not in data:
@@ -102,6 +106,10 @@ def upload_image(access_token: str, image_path: str) -> str:
             timeout=API_TIMEOUT,
         )
 
+    if resp.status_code != 200:
+        raise ValueError(
+            f"WeChat upload_image API returned HTTP {resp.status_code}: {resp.text[:200]}"
+        )
     data = resp.json()
 
     if "url" not in data:
@@ -130,6 +138,10 @@ def upload_thumb(access_token: str, image_path: str) -> str:
             timeout=API_TIMEOUT,
         )
 
+    if resp.status_code != 200:
+        raise ValueError(
+            f"WeChat upload_thumb API returned HTTP {resp.status_code}: {resp.text[:200]}"
+        )
     data = resp.json()
 
     if "media_id" not in data:

@@ -106,6 +106,8 @@ cd {skill_dir} && git fetch origin main --quiet 2>/dev/null
 python3 {skill_dir}/scripts/fetch_hotspots.py --limit 30
 ```
 
+数据来源：微博热搜、今日头条、百度热搜、[AI HOT](https://aihot.virxact.com)（AI 领域精选热点）
+
 **降级**：脚本报错 → web_search "今日热点 {topics第一个垂类}"
 
 **2.2 历史分析 + SEO**：

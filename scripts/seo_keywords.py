@@ -39,13 +39,14 @@ def baidu_suggestions(keyword: str) -> list[str]:
             headers=HEADERS,
             timeout=TIMEOUT,
         )
+        resp.raise_for_status()
         data = resp.json()
         # Response format: [query, [suggestions...]]
         if isinstance(data, list) and len(data) >= 2:
             return data[1]
         return []
-    except Exception as e:
-        print(f"[warn] baidu suggestions failed: {e}", file=sys.stderr)
+    except (requests.RequestException, ValueError) as e:
+        print(f"[warn] baidu suggestions failed: {type(e).__name__}: {e}", file=sys.stderr)
         return []
 
 
@@ -58,10 +59,11 @@ def so360_suggestions(keyword: str) -> list[str]:
             headers=HEADERS,
             timeout=TIMEOUT,
         )
+        resp.raise_for_status()
         data = resp.json()
         return [item.get("word", "") for item in data.get("result", []) if item.get("word")]
-    except Exception as e:
-        print(f"[warn] 360 suggestions failed: {e}", file=sys.stderr)
+    except (requests.RequestException, ValueError) as e:
+        print(f"[warn] 360 suggestions failed: {type(e).__name__}: {e}", file=sys.stderr)
         return []
 
 

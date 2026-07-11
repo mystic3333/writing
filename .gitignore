@@ -16,6 +16,9 @@ optimization-results.tsv
 output/
 !output/.gitkeep
 
+# AI-generated images (runtime artifacts)
+generated-images/
+
 # Exemplar library (user-specific content)
 references/exemplars/*.md
 references/exemplars/index.yaml
